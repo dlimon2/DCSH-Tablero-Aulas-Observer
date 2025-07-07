@@ -5,7 +5,7 @@ División de Ciencias Sociales y Humanidades
 Universidad Autónoma Metropolitana - Xochimilco
 
 Este script monitorea cambios en la hoja de cálculo de asignación de aulas
-y notifica a través de WebSockets cuando detecta modificaciones.
+y notifica a una API cuando se detectan modificaciones.
 
 Autor: Daniel Limón <dani@dlimon.net>
 Fecha: Junio 2025
@@ -27,21 +27,18 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
-# Importaciones de Google Sheets
 import gspread
 from google.oauth2.service_account import Credentials
 
-# Configuración de logging profesional
+
 def setup_logging():
     """
     Configura el sistema de logging para el script.
-    Los logs se guardan tanto en archivo como en consola.
+    Los logs se guardan tanto en archivo como en terminal.
     """
     log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     date_format = '%Y-%m-%d %H:%M:%S'
     
-    # Crear directorio de logs si no existe
-    #log_dir = Path('/var/log/sheets-observer')
     log_dir = Path('logs')
     log_dir.mkdir(parents=True, exist_ok=True)
     
@@ -58,7 +55,7 @@ def setup_logging():
     
     return logging.getLogger(__name__)
 
-# Dataclasses para estructurar los datos
+# Estructuras de datos para representar aulas y horarios
 @dataclass
 class TimeSlot:
     """Representa una franja horaria específica"""
@@ -257,14 +254,6 @@ class SheetsParser:
         Formato esperado: [NO, EDIF, AULA, CUPO, ...]
         """
         row_check = row[1:5]  # Solo necesitamos los primeros 4 campos
-
-        # try:
-        #     row_check[0] = int(row_check[0])  # Convertir a entero para validar el número
-        #     print(type(row_check[0]))
-        # except (ValueError, IndexError):
-        #     self.logger.debug("Fila no contiene un número de aula válido")
-        #     return None
-        # return
         
         try:
             # Verificar que los primeros campos tengan contenido relevante
@@ -295,66 +284,8 @@ class SheetsParser:
         except Exception as e:
             self.logger.debug(f"Error extrayendo info básica: {e}")
             return None
-###    
-    # def _parse_classroom_schedule(self, data: List[List[str]], start_row: int) -> ClassroomSchedule:
-    #     """
-    #     Parsea el horario completo de un aula.
-        
-    #     Args:
-    #         data: Datos completos de la hoja
-    #         start_row: Fila donde comienza la información del aula
-    #     """
-    #     # Crear diccionario para almacenar horarios por día
-    #     daily_schedules = {day: [] for day in self.day_columns.keys()}
-        
-    #     # Serializar cada franja horaria (14 franjas después de la fila header)
-    #     for slot_index, (start_time, end_time) in enumerate(self.time_slots):
-    #         row_index = start_row + slot_index + 1  # +1 para saltar la fila header
-    #         row_data = self._get_row_safely(data, row_index)
-            
-    #         # Parsear cada día de la semana para esta franja horaria
-    #         for day_name, col_index in self.day_columns.items():
-    #             cell_content = row_data[col_index] if col_index < len(row_data) else ""
-    #             time_slot = self._parse_time_slot(cell_content, start_time, end_time)
-    #             daily_schedules[day_name].append(time_slot)
-        
-    #     return ClassroomSchedule(
-    #         monday=daily_schedules['monday'],
-    #         tuesday=daily_schedules['tuesday'],
-    #         wednesday=daily_schedules['wednesday'],
-    #         thursday=daily_schedules['thursday'],
-    #         friday=daily_schedules['friday']
-    #     )
-    
-    # def _parse_time_slot(self, cell_content: str, start_time: str, end_time: str) -> TimeSlot:
-    #     """
-    #     Parsea el contenido de una celda para crear un TimeSlot.
-        
-    #     Args:
-    #         cell_content: Contenido de la celda
-    #         start_time: Hora de inicio de la franja
-    #         end_time: Hora de fin de la franja
-    #     """
-    #     if not cell_content or cell_content.strip() == "":
-    #         return TimeSlot(start_time, end_time, "", "", "")
-        
-    #     # Limpiar el contenido
-    #     content = cell_content.strip()
-        
-    #     # Intentar extraer programa, materia y profesor
-    #     # El formato suele ser: PROGRAMA\nMateria\nProfesor
-    #     lines = content.split('\n')
-        
-    #     program = lines[0] if len(lines) > 0 else ""
-    #     subject = lines[1] if len(lines) > 1 else ""
-    #     professor = lines[2] if len(lines) > 2 else ""
-        
-    #     # Si hay más líneas, combinarlas
-    #     if len(lines) > 3:
-    #         professor = " ".join(lines[2:])
-        
-    #     return TimeSlot(start_time, end_time, subject, professor, program)
-###
+
+
     def _parse_classroom_schedule(self, data: List[List[str]], start_row: int) -> ClassroomSchedule:
         """
         Serializa el horario completo de un aula desde una sola fila con estructura horizontal.
@@ -438,6 +369,7 @@ class SheetsObserver:
         # Estado interno
         self.last_data_hash = None
         self.last_successful_check = None
+        
         self.consecutive_errors = 0
         
         # Inicializar cliente de Google Sheets
