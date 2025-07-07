@@ -133,7 +133,7 @@ class SheetsConfiguration:
         
         # Configuración de la API WebSocket
         self.api_base_url = os.getenv('API_BASE_URL', 'http://localhost:8000')
-        self.webhook_endpoint = f"{self.api_base_url}/api/sheets/update"
+        self.webhook_endpoint = f"{self.api_base_url}/api/classrooms"
         
         # Parámetros de funcionamiento
         self.check_interval = int(os.getenv('CHECK_INTERVAL_MINUTES', '3'))
